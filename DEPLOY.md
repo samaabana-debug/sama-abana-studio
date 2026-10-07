@@ -65,6 +65,21 @@ Ensuite, au choix :
 
 ---
 
+## Étape 6 — Ajouter ses travaux depuis le téléphone (/admin)
+
+1. Créer un compte gratuit sur **cloudinary.com** (Continuer avec Google).
+2. Dans Cloudinary : **Settings > API Keys**. Copier le **Cloud name**, l'**API Key** et l'**API Secret**.
+3. Dans Render : service **sama-abana-studio > Environment > Add Environment Variable**, ajouter
+   `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` et `CLOUDINARY_API_SECRET`
+   (ou une seule variable `CLOUDINARY_URL=cloudinary://CLÉ:SECRET@NOM`), puis **Save Changes**.
+4. Ouvrir `https://sama-abana.samaabana.workers.dev/admin` et coller le mot de passe `ADMIN_TOKEN`
+   (Render > Environment, ligne ADMIN_TOKEN).
+5. **Ajouter un travail** : choisir la vidéo (100 Mo max) ou la photo (10 Mo max), remplir le titre et la
+   catégorie, choisir l'image de couverture, puis **Publier**. Le travail apparaît aussitôt sur le site.
+
+Dans l'admin : changer l'ordre, masquer, mettre « à la une », modifier, supprimer (le fichier est aussi
+effacé de Cloudinary), lire et classer les demandes de devis, envoyer un e-mail de test.
+
 ## Pour aller plus loin
 
 - **Nom de domaine** (par exemple `sama-abana.com`) : achetez-le chez un registraire, ajoutez-le dans

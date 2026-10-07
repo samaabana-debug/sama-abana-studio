@@ -14,24 +14,29 @@ sur http://127.0.0.1:8000/docs
 """
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import logging
+import math
 import os
 import re
 import secrets
+import unicodedata
 import smtplib
 import ssl
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import defaultdict, deque
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.message import EmailMessage
 from enum import Enum as PyEnum
 from pathlib import Path
-from typing import Annotated, Iterator, Optional
+from typing import Annotated, Iterator, Literal, Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -70,7 +75,14 @@ class Settings:
     resend_api_key = os.getenv("RESEND_API_KEY", "")
     resend_api_url = os.getenv("RESEND_API_URL", "https://api.resend.com/emails")
     email_from = os.getenv("EMAIL_FROM", "Motion Design by Sama Abana <onboarding@resend.dev>")
-    admin_token = os.getenv("ADMIN_TOKEN", "")
+    admin_token = os.getenv("ADMIN_TOKEN", "").strip()
+    # Stockage des vidéos et photos ajoutées depuis /admin (Cloudinary, offre gratuite)
+    cloudinary_url = os.getenv("CLOUDINARY_URL", "").strip().strip("\"'")
+    cloudinary_cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+    cloudinary_api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
+    cloudinary_api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+    cloudinary_api_base = os.getenv("CLOUDINARY_API_BASE", "https://api.cloudinary.com/v1_1").rstrip("/")
+    cloudinary_delivery_base = os.getenv("CLOUDINARY_DELIVERY_BASE", "https://res.cloudinary.com").rstrip("/")
     allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
     quote_rate_limit = int(os.getenv("QUOTE_RATE_LIMIT_PER_HOUR", "5"))
     whatsapp_number = "237656294043"
@@ -206,6 +218,8 @@ class ProjectOut(BaseModel):
     video_full_url: str
     client: Optional[str] = None
     aspect_ratio: str = "9:16"
+    # « video » ou « image » : une photo n'a pas d'aperçu animé et s'ouvre en grand
+    media_type: str = "video"
     is_featured: bool
     created_at: datetime
 
@@ -213,7 +227,24 @@ class ProjectOut(BaseModel):
     def build(cls, p: Project) -> "ProjectOut":
         out = cls.model_validate(p)
         out.category_label = CATEGORY_LABELS[p.category]
+        out.media_type = media_type_of(p.video_full_url)
         return out
+
+
+class ProjectAdminOut(ProjectOut):
+    is_published: bool
+    sort_order: int
+
+
+def media_type_of(url: str) -> str:
+    if "/image/upload/" in url or re.search(r"\.(jpe?g|png|webp|avif|gif)(\?.*)?$", url, re.I):
+        return "image"
+    return "video"
+
+
+MEDIA_URL = r"^(https://[^\s\"'<>]+|media/[A-Za-z0-9._/-]+)$"
+ASPECT_RATIOS = ("9:16", "4:5", "1:1", "16:9")
+AspectRatio = Literal["9:16", "4:5", "1:1", "16:9"]
 
 
 class ProjectCreate(BaseModel):
@@ -221,14 +252,81 @@ class ProjectCreate(BaseModel):
     slug: str = Field(min_length=2, max_length=150, pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
     description: str = Field(min_length=10)
     category: ProjectCategory
-    cover_image_url: str = Field(max_length=500)
-    video_preview_url: Optional[str] = Field(default=None, max_length=500)
-    video_full_url: str = Field(max_length=500)
+    cover_image_url: str = Field(max_length=500, pattern=MEDIA_URL)
+    video_preview_url: Optional[str] = Field(default=None, max_length=500, pattern=MEDIA_URL)
+    video_full_url: str = Field(max_length=500, pattern=MEDIA_URL)
     client: Optional[str] = Field(default=None, max_length=120)
     aspect_ratio: str = Field(default="9:16", pattern=r"^\d{1,2}:\d{1,2}$")
     sort_order: int = 100
     is_featured: bool = False
     is_published: bool = True
+
+
+def _clean_text(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = re.sub(r"[ \t]+", " ", v.strip())
+    return v or None
+
+
+class MediaProjectCreate(BaseModel):
+    """Projet créé depuis /admin après l'envoi du fichier sur Cloudinary."""
+
+    title: str = Field(min_length=2, max_length=150)
+    client: Optional[str] = Field(default=None, max_length=120)
+    category: ProjectCategory
+    description: str = Field(default="", max_length=2000)
+    kind: Literal["video", "image"]
+    public_id: str = Field(pattern=r"^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$", max_length=200)
+    width: Optional[int] = Field(default=None, ge=1, le=20000)
+    height: Optional[int] = Field(default=None, ge=1, le=20000)
+    cover_time: float = Field(default=0, ge=0, le=36000)
+    aspect_ratio: Optional[AspectRatio] = None
+    is_published: bool = True
+    is_featured: bool = False
+
+    @field_validator("title", "client", mode="before")
+    @classmethod
+    def strip(cls, v):
+        return _clean_text(v) if isinstance(v, str) else v
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_desc(cls, v):
+        return (v or "").strip() if isinstance(v, str) or v is None else v
+
+
+class ProjectUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=2, max_length=150)
+    client: Optional[str] = Field(default=None, max_length=120)
+    category: Optional[ProjectCategory] = None
+    description: Optional[str] = Field(default=None, max_length=2000)
+    aspect_ratio: Optional[AspectRatio] = None
+    is_published: Optional[bool] = None
+    is_featured: Optional[bool] = None
+
+    @field_validator("title", "client", mode="before")
+    @classmethod
+    def strip(cls, v):
+        return _clean_text(v) if isinstance(v, str) else v
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def strip_desc(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+
+class ReorderIn(BaseModel):
+    slugs: list[str] = Field(min_length=1, max_length=500)
+
+
+class UploadParamsIn(BaseModel):
+    kind: Literal["video", "image"]
+
+
+class MediaDiscardIn(BaseModel):
+    kind: Literal["video", "image"]
+    public_id: str = Field(pattern=r"^[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*$", max_length=200)
 
 
 class QuoteCreate(BaseModel):
@@ -454,14 +552,168 @@ def rate_limited(ip: str) -> bool:
     return False
 
 
-def require_admin(x_admin_token: Annotated[Optional[str], Header()] = None) -> None:
+# Mot de passe admin : au-delà de 10 essais ratés en 15 min (par connexion), ou 60 au total, on bloque.
+_admin_fails: dict[str, deque[float]] = defaultdict(deque)
+ADMIN_FAIL_WINDOW = 900
+
+
+def _recent(q: deque[float], now: float) -> int:
+    while q and now - q[0] > ADMIN_FAIL_WINDOW:
+        q.popleft()
+    return len(q)
+
+
+def check_admin(token: Optional[str], ip: str) -> None:
     if not settings.admin_token:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Administration désactivée : définissez ADMIN_TOKEN.")
-    if not x_admin_token or not secrets.compare_digest(x_admin_token, settings.admin_token):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Jeton d'administration invalide.")
+    now = time.monotonic()
+    if _recent(_admin_fails[ip], now) >= 10 or _recent(_admin_fails["*"], now) >= 60:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, "Trop d'essais ratés. Réessayez dans 15 minutes.")
+    given = (token or "").strip().encode("utf-8")
+    if not given or not secrets.compare_digest(given, settings.admin_token.encode("utf-8")):
+        _admin_fails[ip].append(now)
+        _admin_fails["*"].append(now)
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Mot de passe administrateur incorrect.")
+
+
+def require_admin(request: Request, x_admin_token: Annotated[Optional[str], Header()] = None) -> None:
+    check_admin(x_admin_token, client_ip(request))
 
 
 Admin = Depends(require_admin)
+
+
+# --------------------------------------------------------------------------- stockage Cloudinary
+@dataclass(frozen=True)
+class CloudinaryConfig:
+    cloud_name: str = ""
+    api_key: str = ""
+    api_secret: str = ""
+    error: str = ""
+
+    @property
+    def ready(self) -> bool:
+        return bool(self.cloud_name and self.api_key and self.api_secret and not self.error)
+
+
+def load_cloudinary() -> CloudinaryConfig:
+    raw = settings.cloudinary_url
+    if raw.upper().startswith("CLOUDINARY_URL="):  # la ligne entière a été collée
+        raw = raw.split("=", 1)[1].strip().strip("\"'")
+    name, key, secret = settings.cloudinary_cloud_name, settings.cloudinary_api_key, settings.cloudinary_api_secret
+    if raw:
+        if "<" in raw or ">" in raw:
+            return CloudinaryConfig(error="CLOUDINARY_URL contient encore <your_api_key> ou <your_api_secret> : remplacez-les par vos vraies valeurs.")
+        m = re.fullmatch(r"cloudinary://([^:@\s]+):([^@\s]+)@([A-Za-z0-9_-]+)", raw)
+        if not m:
+            return CloudinaryConfig(error="CLOUDINARY_URL doit ressembler à cloudinary://CLÉ:SECRET@NOM-DU-CLOUD.")
+        key, secret, name = m.groups()
+    if not (name or key or secret):
+        return CloudinaryConfig()
+    if not (name and key and secret):
+        return CloudinaryConfig(error="Il manque une valeur Cloudinary (nom du cloud, clé API ou secret API).")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+        return CloudinaryConfig(error="Le nom du cloud Cloudinary ne doit contenir que des lettres, chiffres, - ou _.")
+    return CloudinaryConfig(name, key, secret)
+
+
+CLD = load_cloudinary()
+MAX_UPLOAD_BYTES = {"video": 100 * 1024 * 1024, "image": 10 * 1024 * 1024}
+UPLOAD_FORMATS = {
+    "video": "mp4,mov,m4v,webm,mkv,avi,3gp,mpeg,mpg",
+    "image": "jpg,jpeg,png,webp,heic,heif,avif,gif",
+}
+CLD_FOLDER = "sama-abana"
+# Versions livrées (paramètres triés comme le font les SDK Cloudinary) :
+T_VIDEO_FULL = "c_limit,h_1920,q_auto,w_1920"                 # film complet, jusqu'à 1080p
+T_VIDEO_PREVIEW = "ac_none,c_limit,du_6,h_960,q_auto:low,w_960"  # aperçu muet de 6 s sur les cartes
+T_IMAGE_COVER = "c_limit,f_auto,h_1600,q_auto,w_1600"
+T_IMAGE_FULL = "c_limit,f_auto,h_2560,q_auto,w_2560"
+# Préparées dès l'envoi, en arrière-plan, pour que le premier visiteur n'attende pas.
+EAGER_VIDEO = f"{T_VIDEO_FULL}/mp4|{T_VIDEO_PREVIEW}/mp4|{T_VIDEO_PREVIEW}/webm"
+
+
+def cld_sign(params: dict[str, str]) -> str:
+    to_sign = "&".join(f"{k}={v}" for k, v in sorted(params.items()) if v not in ("", None))
+    return hashlib.sha1((to_sign + CLD.api_secret).encode("utf-8")).hexdigest()
+
+
+def cld_upload_params(kind: str) -> dict:
+    rtype = "video" if kind == "video" else "image"
+    fields = {"timestamp": str(int(time.time())), "asset_folder": CLD_FOLDER, "allowed_formats": UPLOAD_FORMATS[rtype]}
+    if rtype == "video":
+        fields.update(eager=EAGER_VIDEO, eager_async="true")
+    fields["signature"] = cld_sign(fields)
+    fields["api_key"] = CLD.api_key
+    return {
+        "upload_url": f"{settings.cloudinary_api_base}/{CLD.cloud_name}/{rtype}/upload",
+        "fields": fields,
+        "chunk_size": 6 * 1024 * 1024,  # Cloudinary exige au moins 5 Mo par morceau (sauf le dernier)
+        "max_bytes": MAX_UPLOAD_BYTES[rtype],
+    }
+
+
+def cld_url(rtype: str, transformation: str, public_id: str, ext: str = "") -> str:
+    return f"{settings.cloudinary_delivery_base}/{CLD.cloud_name}/{rtype}/upload/{transformation}/{public_id}{'.' + ext if ext else ''}"
+
+
+def cld_media_urls(kind: str, public_id: str, cover_time: float) -> dict[str, Optional[str]]:
+    if kind == "image":
+        return {
+            "cover_image_url": cld_url("image", T_IMAGE_COVER, public_id),
+            "video_preview_url": None,
+            "video_full_url": cld_url("image", T_IMAGE_FULL, public_id),
+        }
+    so = f"{cover_time:.2f}".rstrip("0").rstrip(".") or "0"
+    return {
+        "cover_image_url": cld_url("video", f"c_limit,h_1280,q_auto,so_{so},w_1280", public_id, "jpg"),
+        "video_preview_url": cld_url("video", T_VIDEO_PREVIEW, public_id, "mp4"),
+        "video_full_url": cld_url("video", T_VIDEO_FULL, public_id, "mp4"),
+    }
+
+
+def cld_asset_of(url: Optional[str]) -> Optional[tuple[str, str]]:
+    """(type, public_id) d'une adresse construite par cld_url, sinon None (fichiers locals media/...)."""
+    if not url or not CLD.cloud_name:
+        return None
+    prefix = f"{settings.cloudinary_delivery_base}/{CLD.cloud_name}/"
+    if not url.startswith(prefix):
+        return None
+    m = re.fullmatch(r"(image|video)/upload/[^/]+/([A-Za-z0-9_/-]+?)(\.[A-Za-z0-9]{2,5})?", url[len(prefix):])
+    return (m.group(1), m.group(2)) if m else None
+
+
+def cld_destroy(assets: set[tuple[str, str]]) -> None:
+    """Efface les fichiers sur Cloudinary (tâche de fond, sans bloquer l'administration)."""
+    if not CLD.ready:
+        return
+    for rtype, public_id in assets:
+        fields = {"public_id": public_id, "timestamp": str(int(time.time())), "invalidate": "true"}
+        fields["signature"] = cld_sign(fields)
+        fields["api_key"] = CLD.api_key
+        req = urllib.request.Request(
+            f"{settings.cloudinary_api_base}/{CLD.cloud_name}/{rtype}/destroy",
+            data=urllib.parse.urlencode(fields).encode("utf-8"),
+            method="POST",
+            headers={"Content-Type": "application/x-www-form-urlencoded", "User-Agent": "sama-abana-studio/1.0"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as res:
+                log.info("Cloudinary : %s %s supprimé (%s)", rtype, public_id, res.read(200).decode("utf-8", "replace"))
+        except Exception:
+            log.exception("Cloudinary : impossible de supprimer %s %s", rtype, public_id)
+
+
+def nearest_ratio(width: Optional[int], height: Optional[int]) -> str:
+    if not width or not height:
+        return "9:16"
+    r = width / height
+    return min(ASPECT_RATIOS, key=lambda a: abs(math.log(r / (int(a.split(":")[0]) / int(a.split(":")[1])))))
+
+
+def slugify(text: str) -> str:
+    s = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii").lower()
+    return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:80].strip("-") or "projet"
 
 
 # --------------------------------------------------------------------------- données de départ
@@ -557,8 +809,12 @@ async def security_headers(request: Request, call_next):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
-    if request.url.path.startswith(("media/", "/assets/")):
+    path = request.url.path
+    if path.startswith(("/media/", "/assets/")):
         response.headers.setdefault("Cache-Control", "public, max-age=604800")
+    elif path.startswith(("/admin", "/api/admin")):
+        response.headers["Cache-Control"] = "no-store"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
     return response
 
 
@@ -621,9 +877,13 @@ def create_quote(payload: QuoteCreate, request: Request, background: BackgroundT
 
 # ---- API d'administration (en-tête X-Admin-Token)
 @app.get("/api/admin/email-test", tags=["administration"])
-def email_test(token: str = Query(description="Valeur de ADMIN_TOKEN (Render > Environment)")) -> dict:
+def email_test(
+    request: Request,
+    token: Optional[str] = Query(default=None, description="Valeur de ADMIN_TOKEN (Render > Environment)"),
+    x_admin_token: Annotated[Optional[str], Header()] = None,
+) -> dict:
     """Envoie un e-mail de test et affiche la réponse du fournisseur : à ouvrir dans le navigateur."""
-    require_admin(token)
+    check_admin(x_admin_token or token, client_ip(request))
     if not email_enabled():
         return {"ok": False, "error": "Aucun fournisseur d'e-mail configuré (RESEND_API_KEY vide)."}
     try:
@@ -655,6 +915,79 @@ def update_quote(quote_id: int, payload: QuoteStatusUpdate, db: DB) -> QuoteRequ
     return q
 
 
+def ordered_projects(db: Session) -> list[Project]:
+    return list(db.scalars(select(Project).order_by(Project.sort_order, Project.created_at.desc(), Project.id.desc())))
+
+
+def renumber(projects: list[Project]) -> None:
+    for i, p in enumerate(projects, start=1):
+        p.sort_order = i
+
+
+def put_on_top(db: Session, target: Project) -> None:
+    """« À la une » : un seul projet, affiché en grand en tête du portfolio."""
+    for p in db.scalars(select(Project).where(Project.is_featured.is_(True), Project.id != target.id)):
+        p.is_featured = False
+    target.is_featured = True
+    rest = [p for p in ordered_projects(db) if p.id != target.id]
+    renumber([target, *rest])
+
+
+def unique_slug(db: Session, title: str) -> str:
+    base = slugify(title)
+    slug = base
+    while db.scalar(select(Project.id).where(Project.slug == slug)):
+        slug = f"{base}-{secrets.token_hex(2)}"
+    return slug
+
+
+def get_project_or_404(db: Session, slug: str) -> Project:
+    p = db.scalar(select(Project).where(Project.slug == slug))
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Projet introuvable.")
+    return p
+
+
+def project_assets(p: Project) -> set[tuple[str, str]]:
+    return {a for a in (cld_asset_of(p.video_full_url), cld_asset_of(p.cover_image_url), cld_asset_of(p.video_preview_url)) if a}
+
+
+@app.get("/api/admin/status", dependencies=[Admin], tags=["administration"])
+def admin_status(db: DB) -> dict:
+    pending = db.scalars(select(QuoteRequest.id).where(QuoteRequest.status == QuoteStatus.PENDING)).all()
+    return {
+        "projects": len(db.scalars(select(Project.id)).all()),
+        "quotes_pending": len(pending),
+        "storage_ready": CLD.ready,
+        "storage_error": CLD.error or None,
+        "cloud_name": CLD.cloud_name or None,
+        "email_provider": email_provider() or None,
+        "notify_email": settings.notify_email,
+        "max_mb": {k: v // (1024 * 1024) for k, v in MAX_UPLOAD_BYTES.items()},
+    }
+
+
+@app.get("/api/admin/projects", response_model=list[ProjectAdminOut], dependencies=[Admin], tags=["administration"])
+def admin_list_projects(db: DB) -> list[ProjectAdminOut]:
+    return [ProjectAdminOut.build(p) for p in ordered_projects(db)]
+
+
+@app.post("/api/admin/upload-params", dependencies=[Admin], tags=["administration"])
+def upload_params(payload: UploadParamsIn) -> dict:
+    """Autorisation signée (valable 1 h) pour envoyer un fichier directement du téléphone vers Cloudinary."""
+    if not CLD.ready:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, CLD.error or "Stockage non configuré : ajoutez CLOUDINARY_URL dans Render > Environment.")
+    return cld_upload_params(payload.kind)
+
+
+@app.post("/api/admin/media/discard", status_code=204, dependencies=[Admin], tags=["administration"])
+def discard_media(payload: MediaDiscardIn, background: BackgroundTasks, db: DB) -> None:
+    """Fichier envoyé puis abandonné (formulaire annulé) : on libère la place."""
+    used = any((payload.kind, payload.public_id) in project_assets(p) for p in db.scalars(select(Project)))
+    if not used:
+        background.add_task(cld_destroy, {(payload.kind, payload.public_id)})
+
+
 @app.post("/api/admin/projects", response_model=ProjectOut, status_code=201, dependencies=[Admin], tags=["administration"])
 def create_project(payload: ProjectCreate, db: DB) -> ProjectOut:
     if db.scalar(select(Project.id).where(Project.slug == payload.slug)):
@@ -666,13 +999,80 @@ def create_project(payload: ProjectCreate, db: DB) -> ProjectOut:
     return ProjectOut.build(p)
 
 
+@app.post("/api/admin/media-projects", response_model=ProjectAdminOut, status_code=201, dependencies=[Admin], tags=["administration"])
+def create_media_project(payload: MediaProjectCreate, db: DB) -> ProjectAdminOut:
+    """Ajout depuis /admin : le serveur construit lui-même les adresses Cloudinary."""
+    if not CLD.ready:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, CLD.error or "Stockage non configuré.")
+    p = Project(
+        title=payload.title,
+        slug=unique_slug(db, payload.title),
+        description=payload.description,
+        category=payload.category,
+        client=payload.client,
+        aspect_ratio=payload.aspect_ratio or nearest_ratio(payload.width, payload.height),
+        is_published=payload.is_published,
+        is_featured=False,
+        sort_order=0,
+        **cld_media_urls(payload.kind, payload.public_id, payload.cover_time),
+    )
+    db.add(p)
+    db.flush()
+    if payload.is_featured:
+        put_on_top(db, p)
+    else:
+        # le nouveau travail passe en tête, juste après le projet « à la une »
+        rest = [x for x in ordered_projects(db) if x.id != p.id]
+        at = 1 if rest and rest[0].is_featured else 0
+        renumber([*rest[:at], p, *rest[at:]])
+    db.commit()
+    db.refresh(p)
+    log.info("Projet ajouté depuis l'admin : %s (%s)", p.slug, payload.kind)
+    return ProjectAdminOut.build(p)
+
+
+@app.patch("/api/admin/projects/{slug}", response_model=ProjectAdminOut, dependencies=[Admin], tags=["administration"])
+def update_project(slug: str, payload: ProjectUpdate, db: DB) -> ProjectAdminOut:
+    p = get_project_or_404(db, slug)
+    data = payload.model_dump(exclude_unset=True)
+    for required in ("title", "category", "description"):
+        if required in data and data[required] is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Le champ {required} ne peut pas être vide.")
+    featured = data.pop("is_featured", None)
+    for k, v in data.items():
+        setattr(p, k, v)
+    if featured is True and not p.is_featured:
+        put_on_top(db, p)
+    elif featured is False:
+        p.is_featured = False
+    db.commit()
+    db.refresh(p)
+    return ProjectAdminOut.build(p)
+
+
+@app.post("/api/admin/projects/reorder", response_model=list[ProjectAdminOut], dependencies=[Admin], tags=["administration"])
+def reorder_projects(payload: ReorderIn, db: DB) -> list[ProjectAdminOut]:
+    by_slug = {p.slug: p for p in ordered_projects(db)}
+    wanted = [by_slug[s] for s in dict.fromkeys(payload.slugs) if s in by_slug]
+    others = [p for p in by_slug.values() if p not in wanted]
+    final = [*wanted, *others]
+    renumber(final)
+    # « À la une » veut dire « en grand, en premier » : un projet descendu perd ce statut.
+    for p in final[1:]:
+        p.is_featured = False
+    db.commit()
+    return [ProjectAdminOut.build(p) for p in ordered_projects(db)]
+
+
 @app.delete("/api/admin/projects/{slug}", status_code=204, dependencies=[Admin], tags=["administration"])
-def delete_project(slug: str, db: DB) -> None:
-    p = db.scalar(select(Project).where(Project.slug == slug))
-    if p is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Projet introuvable.")
+def delete_project(slug: str, background: BackgroundTasks, db: DB) -> None:
+    p = get_project_or_404(db, slug)
+    assets = project_assets(p)
     db.delete(p)
     db.commit()
+    still_used = set().union(*(project_assets(x) for x in db.scalars(select(Project)))) if assets else set()
+    if assets - still_used:
+        background.add_task(cld_destroy, assets - still_used)
 
 
 # ---- fichiers du site (seuls ces fichiers sont exposés, jamais main.py ni .env)
@@ -688,7 +1088,9 @@ def index() -> FileResponse:
 
 @app.get("/robots.txt", include_in_schema=False)
 def robots() -> PlainTextResponse:
-    return PlainTextResponse(f"User-agent: *\nDisallow: /api/\nDisallow: /docs\nSitemap: {settings.site_url}/sitemap.xml\n")
+    return PlainTextResponse(
+        f"User-agent: *\nDisallow: /api/\nDisallow: /docs\nDisallow: /admin\nSitemap: {settings.site_url}/sitemap.xml\n"
+    )
 
 
 @app.get("/sitemap.xml", include_in_schema=False)
@@ -709,6 +1111,35 @@ def stylesheet() -> FileResponse:
 @app.get("/script.js", include_in_schema=False)
 def javascript() -> FileResponse:
     return FileResponse(BASE_DIR / "script.js", media_type="text/javascript; charset=utf-8")
+
+
+def _origin(url: str) -> str:
+    p = urllib.parse.urlsplit(url)
+    return f"{p.scheme}://{p.netloc}"
+
+
+# ---- espace d'administration (une seule page, protégée par le mot de passe ADMIN_TOKEN)
+@app.get("/admin", include_in_schema=False)
+def admin_page() -> FileResponse:
+    api, cdn = _origin(settings.cloudinary_api_base), _origin(settings.cloudinary_delivery_base)
+    csp = (
+        "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; "
+        f"img-src 'self' blob: data: {cdn}; media-src 'self' blob: {cdn}; connect-src 'self' {api}; "
+        "frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+    )
+    return FileResponse(
+        BASE_DIR / "admin.html", media_type="text/html; charset=utf-8", headers={"Content-Security-Policy": csp}
+    )
+
+
+@app.get("/admin.css", include_in_schema=False)
+def admin_css() -> FileResponse:
+    return FileResponse(BASE_DIR / "admin.css", media_type="text/css; charset=utf-8")
+
+
+@app.get("/admin.js", include_in_schema=False)
+def admin_js() -> FileResponse:
+    return FileResponse(BASE_DIR / "admin.js", media_type="text/javascript; charset=utf-8")
 
 
 if __name__ == "__main__":  # python main.py

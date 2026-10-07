@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>Espace admin · Sama Abana</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="/" title="Voir mon site">Sama Abana<span class="brand__tag">admin</span></a>
+    <button class="link" type="button" id="logout" hidden>Déconnexion</button>
+  </header>
+
+  <main class="wrap">
+    <p class="loading" id="boot">Connexion…</p>
+
+    <!-- ============================================================ connexion -->
+    <section class="login" id="login" hidden>
+      <h1 class="title">Espace admin</h1>
+      <p class="muted">Ajoute tes vidéos et tes photos, range ton portfolio et retrouve tes demandes de devis.</p>
+      <form id="login-form" novalidate>
+        <label class="label" for="pw">Mot de passe administrateur</label>
+        <div class="pw">
+          <input class="input" id="pw" name="pw" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" required>
+          <button class="pw__toggle" type="button" id="pw-toggle" aria-pressed="false">Afficher</button>
+        </div>
+        <label class="check"><input type="checkbox" id="remember" checked> Rester connecté sur cet appareil</label>
+        <p class="error" id="login-error" role="alert" hidden></p>
+        <button class="btn btn--key btn--block" type="submit" id="login-btn">Se connecter</button>
+      </form>
+      <details class="help">
+        <summary>Où trouver le mot de passe&nbsp;?</summary>
+        <ol>
+          <li>Ouvre <strong>dashboard.render.com</strong> (en Wi-Fi si les données mobiles bloquent).</li>
+          <li>Touche ton service <strong>sama-abana-studio</strong>, puis <strong>Environment</strong>.</li>
+          <li>Sur la ligne <strong>ADMIN_TOKEN</strong>, touche l'œil pour l'afficher, copie la valeur et colle-la ici.</li>
+        </ol>
+        <p class="muted small">Ne l'envoie à personne : il donne accès à ton site.</p>
+      </details>
+    </section>
+
+    <!-- ============================================================ application -->
+    <section id="app" hidden>
+      <nav class="tabs" role="tablist" aria-label="Sections">
+        <button class="tab-btn" role="tab" type="button" id="t-works" aria-controls="tab-works" aria-selected="true" data-tab="works">
+          Travaux <span class="count" id="count-works"></span>
+        </button>
+        <button class="tab-btn" role="tab" type="button" id="t-quotes" aria-controls="tab-quotes" aria-selected="false" data-tab="quotes">
+          Devis <span class="count count--key" id="count-quotes" hidden></span>
+        </button>
+        <button class="tab-btn" role="tab" type="button" id="t-site" aria-controls="tab-site" aria-selected="false" data-tab="site">Réglages</button>
+      </nav>
+
+      <div class="banner" id="banner" role="status" hidden></div>
+
+      <div class="tab" id="tab-works" role="tabpanel" aria-labelledby="t-works">
+        <button class="btn btn--key btn--block btn--add" type="button" id="add-btn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          Ajouter un travail
+        </button>
+        <p class="muted small hint">Le premier de la liste s'affiche en premier sur ton site. Les flèches changent l'ordre.</p>
+        <ol class="works" id="works"></ol>
+        <p class="muted empty" id="works-empty" hidden>Aucun travail pour l'instant. Touche « Ajouter un travail ».</p>
+      </div>
+
+      <div class="tab" id="tab-quotes" role="tabpanel" aria-labelledby="t-quotes" hidden>
+        <ol class="quotes" id="quotes"></ol>
+        <p class="muted empty" id="quotes-empty" hidden>Aucune demande de devis pour l'instant.</p>
+      </div>
+
+      <div class="tab" id="tab-site" role="tabpanel" aria-labelledby="t-site" hidden>
+        <ul class="settings" id="settings"></ul>
+        <a class="btn btn--ghost btn--block" href="/" target="_blank" rel="noopener">Voir mon site</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================ ajout / modification -->
+  <dialog class="sheet" id="editor" aria-labelledby="editor-title">
+    <form class="sheet__form" id="editor-form" novalidate>
+      <header class="sheet__head">
+        <h2 class="sheet__title" id="editor-title">Ajouter un travail</h2>
+        <button class="icon-btn" type="button" data-close aria-label="Fermer">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="sheet__body">
+        <div class="media" id="media">
+          <input type="file" id="file" accept="video/*,image/*" hidden>
+          <button class="pick" type="button" id="pick">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-5 5m5-5 5 5M4 20h16"/></svg>
+            <strong>Choisir une vidéo ou une photo</strong>
+            <span class="small">Vidéo&nbsp;: 100&nbsp;Mo maximum. Photo&nbsp;: 10&nbsp;Mo maximum.</span>
+          </button>
+
+          <div class="preview" id="preview" hidden>
+            <video class="preview__media" id="pv-video" muted playsinline preload="metadata" hidden></video>
+            <img class="preview__media" id="pv-image" alt="" hidden>
+            <p class="preview__note small" id="pv-note" hidden></p>
+          </div>
+
+          <div class="cover" id="cover" hidden>
+            <div class="cover__head">
+              <label class="label" for="cover-range">Image de couverture</label>
+              <output class="small muted" id="cover-time" for="cover-range">0:00</output>
+            </div>
+            <input class="range" type="range" id="cover-range" min="0" max="1" step="0.1" value="0">
+            <p class="muted small">Fais glisser pour choisir l'image qui s'affiche sur ton site avant la lecture.</p>
+          </div>
+
+          <div class="progress" id="progress" hidden>
+            <div class="progress__bar"><span class="progress__fill" id="progress-fill"></span></div>
+            <p class="small progress__text" id="progress-text" aria-live="polite">Envoi…</p>
+            <div class="progress__actions">
+              <button class="link" type="button" id="retry" hidden>Réessayer</button>
+              <button class="link" type="button" id="change-file" hidden>Changer de fichier</button>
+            </div>
+          </div>
+
+          <img class="current-cover" id="current-cover" alt="" hidden>
+        </div>
+
+        <label class="label" for="f-title">Titre <span class="req">*</span></label>
+        <input class="input" id="f-title" name="title" maxlength="150" required placeholder="Ex. : Spot publicitaire pour…">
+
+        <label class="label" for="f-client">Client</label>
+        <input class="input" id="f-client" name="client" maxlength="120" placeholder="Ex. : NK Beauty (facultatif)">
+
+        <label class="label" for="f-category">Catégorie <span class="req">*</span></label>
+        <select class="input" id="f-category" name="category" required>
+          <option value="">Choisir…</option>
+        </select>
+
+        <label class="label" for="f-ratio">Format</label>
+        <select class="input" id="f-ratio" name="aspect_ratio"></select>
+
+        <label class="label" for="f-desc">Description</label>
+        <textarea class="input" id="f-desc" name="description" rows="3" maxlength="2000" placeholder="Une ou deux phrases sur le projet (facultatif)"></textarea>
+
+        <label class="switch"><input type="checkbox" id="f-published" checked><span>Visible sur le site</span></label>
+        <label class="switch"><input type="checkbox" id="f-featured"><span>À la une (affiché en grand, en premier)</span></label>
+
+        <p class="error" id="editor-error" role="alert" hidden></p>
+      </div>
+
+      <footer class="sheet__foot">
+        <button class="link link--danger" type="button" id="delete-btn" hidden>Supprimer</button>
+        <span class="spacer"></span>
+        <button class="btn btn--ghost" type="button" data-close>Annuler</button>
+        <button class="btn btn--key" type="submit" id="save-btn">Publier</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- ============================================================ confirmation -->
+  <dialog class="confirm" id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 class="confirm__title" id="confirm-title"></h2>
+      <p class="muted" id="confirm-text"></p>
+      <div class="confirm__actions">
+        <button class="btn btn--ghost" value="cancel">Annuler</button>
+        <button class="btn btn--danger" value="ok" id="confirm-ok">Confirmer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

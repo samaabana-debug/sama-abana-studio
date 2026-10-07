@@ -55,6 +55,21 @@ avec le message déjà rédigé : aucune demande n'est perdue.
 
 ## 3. Ajouter un projet au portfolio
 
+### Le plus simple : l'espace admin (`/admin`)
+
+Depuis un téléphone, ouvrez `/admin`, collez le mot de passe `ADMIN_TOKEN`, touchez
+**Ajouter un travail**, choisissez la vidéo ou la photo, remplissez le titre et la catégorie, puis **Publier**.
+Les fichiers partent directement vers Cloudinary (offre gratuite) par morceaux de 6 Mo, avec reprise
+automatique si la connexion coupe. Cloudinary fabrique la version web de la vidéo, l'aperçu muet de 6 s
+et l'image de couverture. Il faut avoir renseigné `CLOUDINARY_URL` (ou les trois variables
+`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`) : voir DEPLOY.md, étape 6.
+
+L'admin permet aussi de changer l'ordre, masquer, mettre à la une, modifier ou supprimer un travail,
+et de lire ou classer les demandes de devis. Après 10 mots de passe faux en 15 minutes, la connexion
+est bloquée un quart d'heure.
+
+### À la main (fichiers dans le dépôt)
+
 1. Déposez les fichiers dans `media/` :
    - une image de couverture (`.jpg`, 720×1280 pour du vertical, 1280×720 pour du 16:9),
    - un aperçu court et muet (`-preview.mp4`, 4 à 8 s, 360 px de large, sans son),

@@ -283,29 +283,42 @@
      ====================================================================== */
   const player = (() => {
     const dlg = $('#player');
-    const video = $('.player__video', dlg);
+    const video = $('.player__video', dlg), image = $('.player__image', dlg);
     const title = $('#player-title'), meta = $('#player-meta'), desc = $('#player-desc'), cta = $('#player-cta');
     let lastFocus = null;
 
     function open(item) {
       lastFocus = document.activeElement;
+      const photo = item.media_type === 'image' && image;
+      const [w, hgt] = String(item.aspect_ratio || '9:16').split(':').map(Number);
+      const ratio = w > 0 && hgt > 0 ? `${w} / ${hgt}` : '9 / 16';
       title.textContent = item.title;
       meta.textContent = item.meta || [CATEGORY_LABELS[item.category], item.client].filter(Boolean).join(', ');
       desc.textContent = item.description || '';
       cta.dataset.category = item.category || '';
       cta.textContent = item.category ? 'Demander un projet similaire' : 'Demander un devis';
-      dlg.classList.toggle('is-wide', item.aspect_ratio === '16:9');
-      video.poster = item.cover_image_url || '';
-      video.src = item.video_full_url;
+      dlg.classList.toggle('is-wide', w > hgt);
+      video.hidden = Boolean(photo);
+      if (image) image.hidden = !photo;
+      if (photo) {
+        image.style.aspectRatio = ratio;
+        image.alt = item.title;
+        image.src = item.video_full_url || item.cover_image_url;
+      } else {
+        video.style.aspectRatio = ratio;
+        video.poster = item.cover_image_url || '';
+        video.src = item.video_full_url;
+      }
       if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
       document.body.classList.add('is-locked');
-      video.play().catch(() => { /* lecture bloquée : l'utilisateur appuiera sur Lecture */ });
+      if (!photo) video.play().catch(() => { /* lecture bloquée : l'utilisateur appuiera sur Lecture */ });
     }
     function close() {
       video.pause(); video.removeAttribute('src'); video.load();
       if (dlg.open) dlg.close();
     }
     dlg.addEventListener('close', () => {
+      image?.removeAttribute('src');
       video.pause(); video.removeAttribute('src');
       document.body.classList.remove('is-locked');
       lastFocus?.focus?.();
@@ -378,18 +391,22 @@
     el.className = 'card' + (featured ? ' card--featured' : '');
     el.dataset.category = p.category;
     const label = CATEGORY_LABELS[p.category] || p.category_label || '';
+    const photo = p.media_type === 'image';
+    // Les formats autres que 9:16 restent entiers dans la carte, sur un fond flouté de la même image.
+    const fit = (p.aspect_ratio || '9:16') !== '9:16';
     el.innerHTML = `
-      <div class="card__media">
-        <img src="${esc(p.cover_image_url)}" alt="" loading="lazy" decoding="async" width="720" height="1280">
-        ${p.video_preview_url ? `<video muted loop playsinline preload="none">
+      <div class="card__media"${fit ? ' data-fit="contain"' : ''}>
+        ${fit ? `<img class="card__backdrop" src="${esc(p.cover_image_url)}" alt="" aria-hidden="true" loading="lazy" decoding="async">` : ''}
+        <img class="card__cover" src="${esc(p.cover_image_url)}" alt="" loading="lazy" decoding="async" width="720" height="1280">
+        ${p.video_preview_url && !photo ? `<video muted loop playsinline preload="none">
           ${/\.mp4$/i.test(p.video_preview_url) ? `<source data-src="${esc(p.video_preview_url.replace(/\.mp4$/i, '.webm'))}" type="video/webm">` : ''}
           <source data-src="${esc(p.video_preview_url)}" type="video/mp4"></video>` : ''}
-        <button class="card__open" type="button" data-cursor="play" aria-label="Lire la vidéo : ${esc(p.title)}"></button>
+        <button class="card__open" type="button" data-cursor="play"${photo ? ' data-cursor-label="Voir"' : ''} aria-label="${photo ? 'Voir la photo' : 'Lire la vidéo'} : ${esc(p.title)}"></button>
       </div>
       <div class="card__body">
         <h3 class="card__title">${esc(p.title)}</h3>
         <p class="card__meta">${esc(label)}${p.client ? `, ${esc(p.client)}` : ''}</p>
-        ${featured ? `<p class="card__desc">${esc(p.description)}</p><button class="btn btn--ghost card__cta" type="button" data-cursor="link">Regarder le film</button>` : ''}
+        ${featured ? `${p.description ? `<p class="card__desc">${esc(p.description)}</p>` : ''}<button class="btn btn--ghost card__cta" type="button" data-cursor="link">${photo ? 'Voir en grand' : 'Regarder le film'}</button>` : ''}
       </div>`;
     const open = () => player.open(p);
     $('.card__open', el).addEventListener('click', open);
@@ -479,9 +496,11 @@
     })();
 
     const state = (cls) => { root.classList.remove('cursor-link', 'cursor-play', 'cursor-text'); if (cls) root.classList.add(cls); };
+    const cursorLabel = $('.cursor__label');
     document.addEventListener('pointerover', (e) => {
       const t = e.target;
-      if (t.closest('[data-cursor="play"]')) state('cursor-play');
+      const playEl = t.closest('[data-cursor="play"]');
+      if (playEl) { if (cursorLabel) cursorLabel.textContent = playEl.dataset.cursorLabel || 'Lire'; state('cursor-play'); }
       else if (t.closest('input, textarea, select')) state('cursor-text');
       else if (t.closest('a, button, label')) state('cursor-link');
       else state(null);

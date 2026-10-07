@@ -199,6 +199,9 @@ html.intro .hero__foot { opacity: 0; }
 .card.is-playing .card__media video { opacity: 1; }
 .card__media img { transition: transform 1.2s var(--ease-out); }
 .card:hover .card__media img { transform: scale(1.03); }
+/* formats 4:5, 1:1, 16:9 : l'image reste entière, posée sur un fond flouté d'elle-même */
+.card__media[data-fit="contain"] .card__cover, .card__media[data-fit="contain"] video { object-fit: contain; }
+.card .card__media .card__backdrop, .card:hover .card__media .card__backdrop { filter: blur(22px) brightness(.5) saturate(1.1); transform: scale(1.2); }
 .card__open { position: absolute; inset: 0; z-index: 2; border-radius: var(--radius-media); }
 .card__title { font: 700 1.15rem/1.2 var(--display); letter-spacing: -0.01em; }
 .card__meta { color: var(--fog); font-size: var(--fs-small); margin-top: 4px; }
@@ -352,6 +355,8 @@ html.intro .hero__foot { opacity: 0; }
 .player__video { height: min(78svh, 820px); width: auto; aspect-ratio: 9 / 16; background: #000; }
 .player.is-wide .player__inner { grid-template-columns: 1fr; }
 .player.is-wide .player__video { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+.player__image { height: min(78svh, 820px); width: auto; max-width: 100%; object-fit: contain; background: #000; }
+.player.is-wide .player__image { width: 100%; height: auto; max-height: 72svh; }
 .player__info { padding: clamp(24px, 3vw, 44px); display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; overflow-y: auto; }
 .player__meta { color: var(--fog); font-size: var(--fs-small); }
 .player__title { font: 800 clamp(1.7rem, 3vw, 2.6rem)/1.02 var(--display); letter-spacing: -0.03em; }
@@ -427,7 +432,7 @@ body.is-locked { overflow: hidden; }
   .timeline { grid-template-columns: auto minmax(0, 1fr); gap: 14px; }
   .timeline__label { display: none; }
   .player__inner { grid-template-columns: 1fr; overflow-y: auto; }
-  .player__video { height: auto; width: 100%; max-height: 62svh; }
+  .player__video, .player__image { height: auto; width: 100%; max-height: 62svh; }
   .player__info { padding: 22px; }
 }
 @media (max-width: 600px) {
