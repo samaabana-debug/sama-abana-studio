@@ -43,7 +43,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine, select
+from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine, inspect, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 try:  # .env optionnel en développement
@@ -779,9 +779,13 @@ def seed(db: Session) -> None:
 # --------------------------------------------------------------------------- application
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    # Les projets de départ ne sont ajoutés qu'à la création de la base : un portfolio vidé
+    # depuis /admin ne doit pas se remplir de nouveau au redémarrage suivant.
+    first_run = not inspect(engine).has_table(Project.__tablename__)
     Base.metadata.create_all(engine)
-    with SessionLocal() as db:
-        seed(db)
+    if first_run:
+        with SessionLocal() as db:
+            seed(db)
     if not email_enabled():
         log.warning("E-mail non configuré : les demandes de devis seront enregistrées sans notification e-mail.")
     yield
