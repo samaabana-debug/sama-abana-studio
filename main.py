@@ -1132,6 +1132,11 @@ def admin_page() -> FileResponse:
     )
 
 
+@app.get("/admin.webmanifest", include_in_schema=False)
+def admin_manifest() -> FileResponse:
+    return FileResponse(BASE_DIR / "admin.webmanifest", media_type="application/manifest+json")
+
+
 @app.get("/admin.css", include_in_schema=False)
 def admin_css() -> FileResponse:
     return FileResponse(BASE_DIR / "admin.css", media_type="text/css; charset=utf-8")
