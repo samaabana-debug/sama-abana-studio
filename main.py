@@ -402,7 +402,7 @@ def notify_new_quote(quote_id: int) -> None:
             ]
         )
         body_html = (
-            "<div style='font-family:Arial,sans-serif;font-size:15px;color:#111;max-width:600px'>"
+            "<div lang='fr' style='font-family:Arial,sans-serif;font-size:15px;color:#111;max-width:600px'>"
             f"<h2 style='margin:0 0 16px'>Demande de devis #{q.id}</h2>"
             f"<table style='border-collapse:collapse'>{rows}</table>"
             "<h3 style='margin:24px 0 8px'>Brief</h3>"
