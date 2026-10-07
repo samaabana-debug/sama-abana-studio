@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="fr" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Motion Design by Sama Abana — studio de motion design au Cameroun</title>
+  <meta name="description" content="Studio créatif spécialisé en motion design : animation 2D et 3D, UI/UX motion, VFX et direction artistique. Demandez un devis par e-mail ou WhatsApp.">
+  <meta name="theme-color" content="#0a0a0a">
+  <!-- Laisser vide si le site et l'API sont sur le même domaine. Sinon : https://api.votre-domaine.com -->
+  <meta name="api-base" content="">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Motion Design by Sama Abana">
+  <meta property="og:description" content="Animation 2D et 3D, UI/UX motion, VFX et direction artistique.">
+  <meta property="og:image" content="media/og-image.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0a'/%3E%3Cpath d='M16 6l10 10-10 10L6 16z' fill='%23FFB547'/%3E%3C/svg%3E">
+  <link rel="preload" href="assets/fonts/syne-var.woff" as="font" type="font/woff" crossorigin>
+  <link rel="stylesheet" href="style.css">
+
+  <script>
+    // Active l'animation d'ouverture seulement si JavaScript tourne (le contenu reste visible sinon).
+    document.documentElement.classList.replace('no-js', 'js');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('intro');
+    setTimeout(function () { document.documentElement.classList.remove('intro'); }, 3000);
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "name": "Motion Design by Sama Abana",
+    "description": "Studio créatif spécialisé en motion design, animations 2D/3D, UI/UX motion et direction artistique.",
+    "email": "Samaabana@gmail.com",
+    "telephone": "+237656294043",
+    "areaServed": "Worldwide",
+    "address": { "@type": "PostalAddress", "addressCountry": "CM" }
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#contenu">Aller au contenu</a>
+
+  <!-- Curseur personnalisé (désactivé sur écran tactile) -->
+  <div class="cursor" aria-hidden="true">
+    <div class="cursor__ring"><span class="cursor__label">Lire</span></div>
+    <div class="cursor__dot"></div>
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="#accueil" aria-label="Motion Design by Sama Abana, retour en haut">
+      <span class="brand__name">Sama Abana</span>
+      <span class="brand__kind">Motion Design</span>
+    </a>
+    <nav class="nav" id="nav" aria-label="Navigation principale">
+      <a href="#travaux">Travaux</a>
+      <a href="#services">Services</a>
+      <a href="#methode">Méthode</a>
+      <a href="#devis">Devis</a>
+    </nav>
+    <a class="btn btn--ghost btn--sm header-wa" href="https://wa.me/237656294043" target="_blank" rel="noopener">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .2-1.3c-.1-.1-.2-.2-.5-.3Z"/></svg>
+      <span>WhatsApp</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="nav">
+      <span class="menu-toggle__bars" aria-hidden="true"></span>
+      <span class="sr-only">Menu</span>
+    </button>
+  </header>
+
+  <main id="contenu">
+    <!-- ===================================================== HERO -->
+    <section class="hero" id="accueil" data-section="Ouverture">
+      <canvas class="hero__canvas" aria-hidden="true"></canvas>
+      <div class="hero__inner">
+        <h1 class="hero__title">
+          <span class="line"><span class="line__inner">Faire</span></span>
+          <span class="line"><span class="line__inner">bouger</span></span>
+          <span class="line"><span class="line__inner">vos idées.</span></span>
+        </h1>
+        <div class="hero__foot">
+          <p class="hero__lead">Motion Design by Sama Abana est un studio créatif basé au Cameroun. Animation 2D et 3D, UI motion, VFX et direction artistique pour les marques qui ont quelque chose à montrer.</p>
+          <div class="hero__actions">
+            <button class="play" type="button" data-showreel data-cursor="play">
+              <span class="play__disc" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+              <span class="play__text">Voir le showreel</span>
+            </button>
+            <a class="btn btn--key" href="#devis">Demander un devis</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================== TRAVAUX -->
+    <section class="section work" id="travaux" data-section="Travaux">
+      <div class="section__head">
+        <h2 class="section__title">Travaux récents</h2>
+        <div class="filters" role="toolbar" aria-label="Filtrer les travaux par discipline">
+          <button type="button" class="chip is-active" data-filter="all" aria-pressed="true">Tout <span class="chip__count" data-count="all"></span></button>
+          <button type="button" class="chip" data-filter="2d_animation" aria-pressed="false">Animation 2D <span class="chip__count" data-count="2d_animation"></span></button>
+          <button type="button" class="chip" data-filter="3d_animation" aria-pressed="false">Animation 3D <span class="chip__count" data-count="3d_animation"></span></button>
+          <button type="button" class="chip" data-filter="ui_ux_motion" aria-pressed="false">UI/UX motion <span class="chip__count" data-count="ui_ux_motion"></span></button>
+          <button type="button" class="chip" data-filter="vfx_compositing" aria-pressed="false">VFX &amp; compositing <span class="chip__count" data-count="vfx_compositing"></span></button>
+        </div>
+      </div>
+
+      <div class="grid" id="grid" aria-live="polite">
+        <p class="grid__loading">Chargement des projets…</p>
+      </div>
+
+      <div class="empty" id="empty" hidden>
+        <p class="empty__text">Aucun projet publié en <strong data-empty-label></strong> pour l'instant. Le vôtre peut être le premier.</p>
+        <a class="btn btn--ghost" href="#devis" data-empty-cta>Proposer un projet</a>
+      </div>
+    </section>
+
+    <!-- ===================================================== SERVICES -->
+    <section class="section services" id="services" data-section="Services">
+      <div class="section__head">
+        <h2 class="section__title">Services</h2>
+        <p class="section__intro">Du premier croquis au fichier livré, chaque projet est conçu pour l'endroit où il sera vu : réseaux sociaux, écran, application ou salle.</p>
+      </div>
+      <ul class="service-list">
+        <li class="service">
+          <h3 class="service__name">Animation 2D</h3>
+          <p class="service__text">Personnages, typographie animée, explainers et publicités pour les réseaux.</p>
+        </li>
+        <li class="service">
+          <h3 class="service__name">Animation 3D</h3>
+          <p class="service__text">Produits, logos et décors modélisés, éclairés et animés pour l'écran.</p>
+        </li>
+        <li class="service">
+          <h3 class="service__name">UI/UX motion</h3>
+          <p class="service__text">Micro-interactions, transitions d'écrans et prototypes animés pour applications et sites.</p>
+        </li>
+        <li class="service">
+          <h3 class="service__name">VFX &amp; compositing</h3>
+          <p class="service__text">Incrustations, nettoyage d'image, effets et étalonnage sur vos tournages.</p>
+        </li>
+        <li class="service">
+          <h3 class="service__name">Direction artistique</h3>
+          <p class="service__text">Univers visuel, styleframes et chartes de mouvement pour que chaque vidéo parle la même langue.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ===================================================== MÉTHODE -->
+    <section class="section method" id="methode" data-section="Méthode">
+      <div class="section__head">
+        <h2 class="section__title">De l'idée au fichier final</h2>
+        <p class="section__intro">Quatre étapes, validées avec vous une par une. Rien n'est animé avant que le récit et le style soient approuvés.</p>
+      </div>
+      <ol class="track" id="track">
+        <li class="track__line" aria-hidden="true"><span class="track__fill"></span></li>
+        <li class="step">
+          <span class="step__key" aria-hidden="true"></span>
+          <span class="step__num">Étape 1</span>
+          <h3 class="step__title">Brief</h3>
+          <p class="step__text">Objectif, public, durée et formats de diffusion : on fixe ce que la vidéo doit accomplir.</p>
+        </li>
+        <li class="step">
+          <span class="step__key" aria-hidden="true"></span>
+          <span class="step__num">Étape 2</span>
+          <h3 class="step__title">Storyboard et styleframes</h3>
+          <p class="step__text">Vous validez le récit image par image et l'univers visuel avant toute animation.</p>
+        </li>
+        <li class="step">
+          <span class="step__key" aria-hidden="true"></span>
+          <span class="step__num">Étape 3</span>
+          <h3 class="step__title">Animation</h3>
+          <p class="step__text">Mouvement, rythme et son. Vous suivez l'avancement et donnez vos retours.</p>
+        </li>
+        <li class="step">
+          <span class="step__key" aria-hidden="true"></span>
+          <span class="step__num">Étape 4</span>
+          <h3 class="step__title">Livraison</h3>
+          <p class="step__text">Fichiers prêts pour chaque écran : 9:16, 4:5, 1:1 et 16:9, en haute résolution.</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ===================================================== DEVIS -->
+    <section class="section quote" id="devis" data-section="Devis">
+      <div class="quote__intro">
+        <h2 class="section__title">Parlons de votre projet</h2>
+        <p class="section__intro">Dites ce que vous voulez montrer, à qui, et où la vidéo sera diffusée. Vous recevez une réponse avec une proposition et un délai.</p>
+        <ul class="direct">
+          <li>
+            <a class="direct__link" href="https://wa.me/237656294043" target="_blank" rel="noopener">
+              <span class="direct__label">WhatsApp</span>
+              <span class="direct__value">+237 656 29 40 43</span>
+            </a>
+          </li>
+          <li>
+            <a class="direct__link" href="mailto:Samaabana@gmail.com">
+              <span class="direct__label">E-mail</span>
+              <span class="direct__value">Samaabana@gmail.com</span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="quote__panel">
+        <form class="form" id="quote-form" novalidate>
+          <div class="field">
+            <label for="f-name">Nom complet</label>
+            <input id="f-name" name="full_name" type="text" autocomplete="name" required minlength="2" maxlength="100">
+            <p class="field__error" id="e-full_name" aria-live="polite"></p>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-email">E-mail</label>
+              <input id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength="255">
+              <p class="field__error" id="e-email" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="f-phone">Téléphone ou WhatsApp <span class="field__opt">(facultatif)</span></label>
+              <input id="f-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="30" placeholder="+237 6 …">
+              <p class="field__error" id="e-phone" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="f-type">Type de projet</label>
+              <select id="f-type" name="project_type" required>
+                <option value="" disabled selected>Choisir</option>
+                <option value="2d_animation">Animation 2D</option>
+                <option value="3d_animation">Animation 3D</option>
+                <option value="ui_ux_motion">UI/UX motion</option>
+                <option value="vfx_compositing">VFX &amp; compositing</option>
+              </select>
+              <p class="field__error" id="e-project_type" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="f-budget">Budget</label>
+              <select id="f-budget" name="budget_range" required>
+                <option value="" disabled selected>Choisir</option>
+                <option>Moins de 100 000 FCFA</option>
+                <option>100 000 – 300 000 FCFA</option>
+                <option>300 000 – 750 000 FCFA</option>
+                <option>750 000 – 1 500 000 FCFA</option>
+                <option>Plus de 1 500 000 FCFA</option>
+                <option>À définir ensemble</option>
+              </select>
+              <p class="field__error" id="e-budget_range" aria-live="polite"></p>
+            </div>
+          </div>
+          <div class="field">
+            <label for="f-brief">Votre projet</label>
+            <textarea id="f-brief" name="brief_description" rows="5" required minlength="20" maxlength="5000" aria-describedby="h-brief"></textarea>
+            <p class="field__hint" id="h-brief">Objectif, durée, formats, date de livraison souhaitée, références.</p>
+            <p class="field__error" id="e-brief_description" aria-live="polite"></p>
+          </div>
+          <!-- Piège à robots : ne pas remplir -->
+          <div class="hp" aria-hidden="true">
+            <label for="f-website">Site web</label>
+            <input id="f-website" name="website" type="text" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="form__alert" id="form-alert" role="alert" hidden></div>
+          <button class="btn btn--key btn--block" type="submit" id="submit">
+            <span class="btn__label">Envoyer la demande</span>
+          </button>
+          <p class="form__note">Vos informations servent uniquement à répondre à votre demande.</p>
+        </form>
+
+        <div class="success" id="success" hidden tabindex="-1">
+          <div class="success__anim" id="success-anim" aria-hidden="true"></div>
+          <h3 class="success__title">Demande envoyée.</h3>
+          <p class="success__text" id="success-text">Sama Abana vous répond par e-mail ou sur WhatsApp.</p>
+          <button class="btn btn--ghost" type="button" id="new-quote">Nouvelle demande</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p class="wordmark" aria-hidden="true">Sama Abana</p>
+    <div class="site-footer__row">
+      <a href="mailto:Samaabana@gmail.com">Samaabana@gmail.com</a>
+      <a href="https://wa.me/237656294043" target="_blank" rel="noopener">WhatsApp +237 656 29 40 43</a>
+      <p>© <span id="year">2026</span> Motion Design by Sama Abana</p>
+      <a href="#accueil">Haut de page</a>
+    </div>
+  </footer>
+
+  <!-- Timeline de défilement : timecode + images clés cliquables -->
+  <nav class="timeline" aria-label="Progression dans la page">
+    <span class="timeline__tc" aria-hidden="true">00:00:00:00</span>
+    <div class="timeline__track">
+      <span class="timeline__played" aria-hidden="true"></span>
+      <span class="timeline__head" aria-hidden="true"></span>
+      <div class="timeline__keys"></div>
+    </div>
+    <span class="timeline__label" aria-hidden="true">Ouverture</span>
+  </nav>
+
+  <!-- Lecteur vidéo (showreel et projets) -->
+  <dialog class="player" id="player" aria-labelledby="player-title">
+    <div class="player__inner">
+      <div class="player__media">
+        <video class="player__video" controls playsinline preload="none"></video>
+      </div>
+      <div class="player__info">
+        <p class="player__meta" id="player-meta"></p>
+        <h2 class="player__title" id="player-title">Showreel</h2>
+        <p class="player__desc" id="player-desc"></p>
+        <a class="btn btn--key" href="#devis" id="player-cta">Demander un projet similaire</a>
+      </div>
+      <button class="player__close" type="button" aria-label="Fermer la vidéo">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+    </div>
+  </dialog>
+
+  <script src="assets/vendor/gsap.min.js" defer></script>
+  <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
+  <script src="assets/vendor/lottie_light.min.js" defer></script>
+  <script src="script.js" defer></script>
+</body>
+</html>

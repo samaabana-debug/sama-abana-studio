@@ -1,0 +1,8 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0,<3
+pydantic>=2.6,<3
+email-validator>=2.1
+python-dotenv>=1.0
+# PostgreSQL (facultatif : seulement si DATABASE_URL pointe vers PostgreSQL)
+psycopg[binary]>=3.1

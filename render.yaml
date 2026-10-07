@@ -1,0 +1,26 @@
+# Déploiement automatique sur Render (bouton « Deploy to Render » ou New > Blueprint)
+services:
+  - type: web
+    name: sama-abana-studio
+    runtime: python
+    plan: free
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      # Base Neon (gratuite, sans limite de durée) : coller la « connection string »
+      - key: DATABASE_URL
+        sync: false
+      # Clé API Resend (envoi des notifications de devis)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: NOTIFY_EMAIL
+        value: Samaabana@gmail.com
+      - key: EMAIL_FROM
+        value: Motion Design by Sama Abana <onboarding@resend.dev>
+      # Mot de passe d'administration généré automatiquement par Render
+      - key: ADMIN_TOKEN
+        generateValue: true
