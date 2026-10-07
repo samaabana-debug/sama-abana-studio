@@ -19,6 +19,8 @@ services:
         sync: false
       - key: NOTIFY_EMAIL
         value: samaabana@gmail.com
+      - key: SITE_URL
+        value: https://sama-abana.samaabana.workers.dev
       - key: EMAIL_FROM
         value: Motion Design by Sama Abana <onboarding@resend.dev>
       # Mot de passe d'administration généré automatiquement par Render

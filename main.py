@@ -35,7 +35,7 @@ from typing import Annotated, Iterator, Optional
 
 from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine, select
@@ -74,6 +74,7 @@ class Settings:
     allowed_origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
     quote_rate_limit = int(os.getenv("QUOTE_RATE_LIMIT_PER_HOUR", "5"))
     whatsapp_number = "237656294043"
+    site_url = os.getenv("SITE_URL", "https://sama-abana.samaabana.workers.dev").rstrip("/")
 
 
 settings = Settings()
@@ -683,6 +684,21 @@ for folder in ("media", "assets"):
 @app.get("/", include_in_schema=False)
 def index() -> FileResponse:
     return FileResponse(BASE_DIR / "index.html", media_type="text/html; charset=utf-8")
+
+
+@app.get("/robots.txt", include_in_schema=False)
+def robots() -> PlainTextResponse:
+    return PlainTextResponse(f"User-agent: *\nDisallow: /api/\nDisallow: /docs\nSitemap: {settings.site_url}/sitemap.xml\n")
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+def sitemap() -> Response:
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        f"<url><loc>{settings.site_url}/</loc><changefreq>monthly</changefreq></url></urlset>\n"
+    )
+    return Response(xml, media_type="application/xml")
 
 
 @app.get("/style.css", include_in_schema=False)
