@@ -59,7 +59,8 @@ def env_bool(name: str, default: bool = False) -> bool:
 class Settings:
     site_name = "Motion Design by Sama Abana"
     database_url = os.getenv("DATABASE_URL", "").strip() or f"sqlite:///{BASE_DIR / 'studio.db'}"
-    notify_email = os.getenv("NOTIFY_EMAIL", "Samaabana@gmail.com")
+    # En minuscules : Resend compare l'adresse au compte à la lettre près.
+    notify_email = os.getenv("NOTIFY_EMAIL", "samaabana@gmail.com").strip().lower()
     smtp_host = os.getenv("SMTP_HOST", "")
     smtp_port = int(os.getenv("SMTP_PORT", "587"))
     smtp_user = os.getenv("SMTP_USER", "")
@@ -618,6 +619,23 @@ def create_quote(payload: QuoteCreate, request: Request, background: BackgroundT
 
 
 # ---- API d'administration (en-tête X-Admin-Token)
+@app.get("/api/admin/email-test", tags=["administration"])
+def email_test(token: str = Query(description="Valeur de ADMIN_TOKEN (Render > Environment)")) -> dict:
+    """Envoie un e-mail de test et affiche la réponse du fournisseur : à ouvrir dans le navigateur."""
+    require_admin(token)
+    if not email_enabled():
+        return {"ok": False, "error": "Aucun fournisseur d'e-mail configuré (RESEND_API_KEY vide)."}
+    try:
+        send_email(
+            settings.notify_email,
+            "Test d'envoi — Motion Design by Sama Abana",
+            "Si vous lisez ce message, les demandes de devis du site arriveront bien ici.",
+        )
+        return {"ok": True, "provider": email_provider(), "from": _sender(), "to": settings.notify_email}
+    except Exception as err:  # on renvoie l'erreur exacte pour pouvoir la corriger
+        return {"ok": False, "provider": email_provider(), "from": _sender(), "to": settings.notify_email, "error": str(err)}
+
+
 @app.get("/api/admin/quotes", response_model=list[QuoteOut], dependencies=[Admin], tags=["administration"])
 def list_quotes(db: DB, status_filter: Optional[QuoteStatus] = Query(default=None, alias="status")) -> list[QuoteRequest]:
     stmt = select(QuoteRequest).order_by(QuoteRequest.created_at.desc())

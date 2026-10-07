@@ -83,3 +83,24 @@ Ensuite, au choix :
 | `/api/health` affiche `"email_notifications": false` | clé Resend absente | ajoutez `RESEND_API_KEY` dans Render > Environment, puis *Manual Deploy* |
 | Aucun e-mail reçu | compte Resend créé avec une autre adresse | `NOTIFY_EMAIL` doit être l'adresse du compte Resend ; voir Render > *Logs* |
 | Les projets ajoutés disparaissent | `DATABASE_URL` vide : le site utilise SQLite, effacé à chaque veille | renseignez la connection string Neon |
+
+---
+
+## Si le site ne s'ouvre pas avec les données mobiles
+
+Certains opérateurs bloquent les adresses `*.onrender.com`. Un relais gratuit Cloudflare sert le même site
+sous une adresse `*.workers.dev`, qui n'est pas bloquée.
+
+1. Créez un compte sur https://dash.cloudflare.com/sign-up (gratuit, sans carte bancaire).
+2. Menu **Workers & Pages** > **Create** > **Create Worker** (ou *Start with Hello World*).
+3. Nom : `sama-abana`, puis **Deploy**.
+4. **Edit code** : effacez tout, collez le contenu de `cloudflare/worker.js`, puis **Deploy**.
+5. Votre site est accessible à `https://sama-abana.VOTRE-SOUS-DOMAINE.workers.dev` : c'est l'adresse à donner aux clients.
+6. Facultatif, pour que le site ne s'endorme plus : worker > **Settings** > **Triggers** > **Cron Triggers** >
+   **Add**, expression `*/10 * * * *`.
+
+## Vérifier l'envoi des e-mails
+
+Ouvrez `https://sama-abana-studio.onrender.com/api/admin/email-test?token=ADMIN_TOKEN`
+(remplacez ADMIN_TOKEN par la valeur visible dans Render > Environment).
+`"ok": true` signifie qu'un e-mail de test vient de partir ; sinon le message d'erreur exact s'affiche.
