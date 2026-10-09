@@ -1,7 +1,8 @@
 // Relais Cloudflare du site Motion Design by Sama Abana
 // 1. Sert le site Render sous l'adresse *.workers.dev (certains réseaux mobiles bloquent *.onrender.com).
 // 2. Si Render ne répond pas, affiche une page de secours avec WhatsApp et e-mail au lieu d'une erreur.
-// 3. Réveille le site toutes les 10 minutes (déclencheur « Cron »).
+// 3. Laisse passer la page du mode maintenance réglé depuis /admin.
+// 4. Réveille le site toutes les 10 minutes (déclencheur « Cron »).
 // Coller ce code dans Cloudflare > Workers & Pages > votre worker > Edit code, puis Deploy.
 const ORIGIN = "https://sama-abana-studio.onrender.com";
 const WHATSAPP = "237656294043";
@@ -32,7 +33,8 @@ export default {
     } catch (err) {
       return secours(page);
     }
-    if (page && res.status >= 500) return secours(true);
+    // le mode maintenance de l'admin (en-tête X-Maintenance) passe tel quel ; les vraies pannes, non
+    if (page && res.status >= 500 && !res.headers.has("X-Maintenance")) return secours(true);
     const out = new Response(res.body, res);
     const loc = out.headers.get("Location");
     if (loc && loc.startsWith(origin)) out.headers.set("Location", loc.replace(origin, url.origin));

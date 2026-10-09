@@ -15,6 +15,7 @@ sur http://127.0.0.1:8000/docs
 from __future__ import annotations
 
 import hashlib
+import hmac
 import html
 import json
 import logging
@@ -42,6 +43,7 @@ from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Qu
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from sqlalchemy import Boolean, DateTime, Enum, Integer, String, Text, create_engine, inspect, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
@@ -172,6 +174,16 @@ class QuoteRequest(Base):
     )
     notified: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class SiteSetting(Base):
+    """Réglages modifiables depuis /admin (ex. mode maintenance), stockés en JSON."""
+
+    __tablename__ = "site_settings"
+
+    key: Mapped[str] = mapped_column(String(50), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
 
 def _normalise_db_url(url: str) -> str:
@@ -318,6 +330,18 @@ class ProjectUpdate(BaseModel):
 
 class ReorderIn(BaseModel):
     slugs: list[str] = Field(min_length=1, max_length=500)
+
+
+class MaintenanceIn(BaseModel):
+    enabled: bool
+    title: str = Field(default="", max_length=120)
+    message: str = Field(default="", max_length=600)
+    return_date: str = Field(default="", max_length=60)
+
+    @field_validator("title", "message", "return_date", mode="before")
+    @classmethod
+    def strip(cls, v):
+        return v.strip() if isinstance(v, str) else (v or "")
 
 
 class UploadParamsIn(BaseModel):
@@ -716,6 +740,135 @@ def slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:80].strip("-") or "projet"
 
 
+# --------------------------------------------------------------------------- mode maintenance
+# Fermé depuis /admin > Réglages : les visiteurs voient une page d'attente (503, Google comprend
+# que c'est temporaire). L'admin, l'API et les fichiers restent accessibles ; un cookie signé
+# permet au propriétaire de voir le vrai site pendant la fermeture.
+MAINTENANCE_DEFAULT = {
+    "enabled": False,
+    "title": "Le studio fait peau neuve.",
+    "message": "Nous préparons de nouvelles réalisations. Le site rouvre très bientôt : "
+               "en attendant, écrivez-nous directement, nous répondons rapidement.",
+    "return_date": "",
+    "since": None,
+}
+_maintenance_cache: dict = {"value": None, "at": 0.0}
+PREVIEW_COOKIE = "sa_apercu"
+
+
+def get_maintenance(fresh: bool = False) -> dict:
+    now = time.monotonic()
+    cached = _maintenance_cache["value"]
+    if cached is not None and not fresh and now - _maintenance_cache["at"] < 10:
+        return cached
+    value = dict(MAINTENANCE_DEFAULT)
+    try:
+        with SessionLocal() as db:
+            row = db.get(SiteSetting, "maintenance")
+            if row:
+                value.update(json.loads(row.value))
+    except Exception:  # base injoignable : on laisse le site ouvert plutôt que de le bloquer
+        log.exception("Lecture du mode maintenance impossible")
+        return cached or value
+    _maintenance_cache.update(value=value, at=now)
+    return value
+
+
+def save_maintenance(db: Session, value: dict) -> dict:
+    row = db.get(SiteSetting, "maintenance")
+    data = json.dumps(value, ensure_ascii=False)
+    if row:
+        row.value = data
+    else:
+        db.add(SiteSetting(key="maintenance", value=data))
+    db.commit()
+    _maintenance_cache.update(value=value, at=time.monotonic())
+    return value
+
+
+def preview_token() -> str:
+    return hmac.new(settings.admin_token.encode("utf-8"), b"apercu-du-site", hashlib.sha256).hexdigest()
+
+
+def has_preview(request: Request) -> bool:
+    given = request.cookies.get(PREVIEW_COOKIE, "")
+    return bool(settings.admin_token and given) and secrets.compare_digest(given, preview_token())
+
+
+def maintenance_page(m: dict) -> str:
+    e = html.escape
+    wa = f"https://wa.me/{settings.whatsapp_number}?text=" + urllib.parse.quote(
+        "Bonjour Sama Abana, j'aimerais parler d'un projet de motion design.")
+    mail = f"mailto:{settings.notify_email}?subject=" + urllib.parse.quote("Demande de devis")
+    title = e(m.get("title") or MAINTENANCE_DEFAULT["title"])
+    words = title.rsplit(" ", 2)
+    if len(words) == 3:  # les deux derniers mots en ambre, comme sur le site
+        title = f"{words[0]} <em>{words[1]} {words[2]}</em>"
+    date = f'<p class="date">Réouverture prévue : <strong>{e(m["return_date"])}</strong></p>' if m.get("return_date") else ""
+    return f"""<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a"><title>{settings.site_name} · bientôt de retour</title>
+<link rel="icon" type="image/png" sizes="192x192" href="/assets/icons/site-192.png">
+<style>
+@font-face{{font-family:"Syne";src:url("/assets/fonts/syne-var.woff") format("woff");font-weight:400 800;font-display:swap}}
+@font-face{{font-family:"Jakarta";src:url("/assets/fonts/jakarta-var.woff") format("woff");font-weight:200 800;font-display:swap}}
+:root{{color-scheme:dark;--ink:#0a0a0a;--bone:#ece8e1;--fog:#9a968f;--key:#ffb547;--rule:#2c2a27}}
+*{{box-sizing:border-box}}
+body{{margin:0;min-height:100svh;background:var(--ink);color:var(--bone);font:400 17px/1.6 "Jakarta",system-ui,sans-serif;
+display:flex;flex-direction:column;padding:max(24px,env(safe-area-inset-top)) 22px max(24px,env(safe-area-inset-bottom))}}
+.brand{{font:800 18px/1 "Syne","Arial Black",sans-serif;letter-spacing:-.01em}}
+.brand span{{display:block;color:var(--fog);font:500 12px "Jakarta",sans-serif;letter-spacing:.08em;margin-top:6px}}
+main{{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:680px;width:100%;margin:0 auto;padding:40px 0}}
+h1{{font:800 clamp(38px,10vw,76px)/.98 "Syne","Arial Black",sans-serif;letter-spacing:-.035em;margin:0 0 24px}}
+h1 em{{font-style:normal;color:var(--key)}}
+p{{margin:0 0 22px;color:#cfcac2;max-width:34em;white-space:pre-line}}
+.date{{color:var(--bone)}}
+.date strong{{color:var(--key)}}
+.actions{{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}}
+.btn{{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:54px;padding:0 24px;border-radius:99px;font-weight:700;text-decoration:none;color:var(--bone);border:1px solid var(--rule)}}
+.btn--key{{background:var(--key);color:#1a1205;border-color:var(--key)}}
+.btn svg{{width:20px;height:20px;fill:currentColor}}
+.timeline{{margin-top:48px;display:flex;align-items:center;gap:14px;color:var(--fog);font:600 12px ui-monospace,monospace}}
+.track{{position:relative;flex:1;height:1px;background:var(--rule)}}
+.key{{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border:1.5px solid var(--fog);transform:rotate(45deg)}}
+.key.on{{background:var(--key);border-color:var(--key)}}
+.head{{position:absolute;top:-9px;bottom:-9px;width:2px;background:var(--key);animation:scrub 6s ease-in-out infinite alternate}}
+@keyframes scrub{{from{{left:8%}}to{{left:62%}}}}
+@media (prefers-reduced-motion:reduce){{.head{{animation:none;left:40%}}}}
+footer{{color:var(--fog);font-size:13px}}
+</style></head><body>
+<div class="brand">Sama Abana<span>MOTION DESIGN</span></div>
+<main>
+<h1>{title}</h1>
+<p>{e(m.get("message") or MAINTENANCE_DEFAULT["message"])}</p>
+{date}
+<div class="actions">
+<a class="btn btn--key" href="{wa}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Z"/></svg>Écrire sur WhatsApp</a>
+<a class="btn" href="{mail}">Envoyer un e-mail</a>
+</div>
+<div class="timeline" aria-hidden="true"><span>EN MONTAGE</span><div class="track">
+<span class="key on" style="left:8%"></span><span class="key on" style="left:30%"></span><span class="key" style="left:62%"></span><span class="key" style="left:90%"></span><span class="head"></span></div></div>
+</main>
+<footer>{settings.site_name} · WhatsApp +237 656 29 40 43</footer>
+</body></html>"""
+
+
+def maintenance_response(request: Request) -> Optional[Response]:
+    """Page d'attente à la place de l'accueil quand le site est fermé (ou en aperçu)."""
+    if request.method not in ("GET", "HEAD") or request.url.path not in ("/", "/index.html"):
+        return None
+    preview = "apercu-maintenance" in request.query_params
+    if not preview:
+        m = get_maintenance()
+        if not m["enabled"] or has_preview(request):
+            return None
+    else:
+        m = get_maintenance()
+    retry = "3600" if not preview else "60"
+    return Response(maintenance_page(m), status_code=503, media_type="text/html; charset=utf-8",
+                    headers={"Retry-After": retry, "Cache-Control": "no-store", "X-Maintenance": "1"})
+
+
 # --------------------------------------------------------------------------- données de départ
 SEED_PROJECTS = [
     dict(
@@ -809,7 +962,7 @@ if settings.allowed_origins:
 
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
-    response = await call_next(request)
+    response = await run_in_threadpool(maintenance_response, request) or await call_next(request)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
@@ -968,7 +1121,34 @@ def admin_status(db: DB) -> dict:
         "email_provider": email_provider() or None,
         "notify_email": settings.notify_email,
         "max_mb": {k: v // (1024 * 1024) for k, v in MAX_UPLOAD_BYTES.items()},
+        "maintenance": get_maintenance(fresh=True)["enabled"],
     }
+
+
+@app.get("/api/admin/maintenance", dependencies=[Admin], tags=["administration"])
+def maintenance_get() -> dict:
+    return get_maintenance(fresh=True)
+
+
+@app.put("/api/admin/maintenance", dependencies=[Admin], tags=["administration"])
+def maintenance_put(payload: MaintenanceIn, db: DB) -> dict:
+    current = get_maintenance(fresh=True)
+    value = {
+        "enabled": payload.enabled,
+        "title": payload.title or MAINTENANCE_DEFAULT["title"],
+        "message": payload.message or MAINTENANCE_DEFAULT["message"],
+        "return_date": payload.return_date,
+        "since": (current.get("since") if current["enabled"] else utcnow().isoformat()) if payload.enabled else None,
+    }
+    log.info("Mode maintenance %s", "activé" if payload.enabled else "désactivé")
+    return save_maintenance(db, value)
+
+
+@app.post("/api/admin/preview-access", status_code=204, dependencies=[Admin], tags=["administration"])
+def preview_access(request: Request, response: Response) -> None:
+    """Cookie signé (12 h) : le propriétaire voit le vrai site même quand il est fermé."""
+    response.set_cookie(PREVIEW_COOKIE, preview_token(), max_age=12 * 3600, httponly=True,
+                        secure=request.url.scheme == "https", samesite="lax", path="/")
 
 
 @app.get("/api/admin/projects", response_model=list[ProjectAdminOut], dependencies=[Admin], tags=["administration"])

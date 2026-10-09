@@ -136,6 +136,16 @@ select.input { appearance: none; background-image: linear-gradient(45deg, transp
 .setting { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 4px 12px; padding: 16px; background: var(--ink-2); border: 1px solid var(--rule); border-radius: var(--r); }
 .setting__dot { width: 12px; height: 12px; border-radius: 50%; margin: 6px 0 0 6px; background: var(--error); }
 .setting__dot.is-ok { background: var(--ok); }
+.setting__dot.is-warn { background: var(--key); box-shadow: 0 0 0 4px rgba(255, 181, 71, .18); }
+.setting--maint.is-closed { border-color: #6b5020; }
+.mfield { display: block; margin-top: 12px; }
+.mfield span { display: block; font-size: .85rem; font-weight: 600; color: var(--bone); margin-bottom: 5px; }
+.mfield .input { min-height: 44px; padding: 10px 12px; font-size: 16px; }
+.mfield textarea.input { min-height: 80px; }
+.maint-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.maint-actions .btn--block { flex: 1 1 100%; }
+.act--key { background: var(--key); color: var(--key-ink); border-color: var(--key); }
+.banner--maint { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .setting h3 { margin: 0; font: 700 1rem/1.3 var(--display); }
 .setting p { margin: 2px 0 0; color: var(--fog); font-size: .9rem; overflow-wrap: anywhere; }
 .setting .act { margin-top: 10px; justify-self: start; }

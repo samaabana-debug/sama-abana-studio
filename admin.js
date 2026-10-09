@@ -128,7 +128,7 @@
   }
 
   /* ------------------------------------------------------------ connexion */
-  const state = { projects: [], quotes: [], status: null, tab: 'works' };
+  const state = { projects: [], quotes: [], status: null, maintenance: null, tab: 'works' };
 
   function show(view) {
     $('#boot').hidden = true;
@@ -180,7 +180,7 @@
   async function enter() {
     show('app');
     renderBanner();
-    await Promise.all([loadProjects(), loadQuotes()]);
+    await Promise.all([loadProjects(), loadQuotes(), loadMaintenance()]);
     renderSettings();
   }
 
@@ -201,7 +201,7 @@
     document.querySelectorAll('.tab-btn').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
     ['works', 'quotes', 'site'].forEach((t) => { $(`#tab-${t}`).hidden = t !== name; });
     if (name === 'quotes') loadQuotes().catch(fail);
-    if (name === 'site') refreshStatus().then(renderSettings).catch(fail);
+    if (name === 'site') Promise.all([refreshStatus(), loadMaintenance()]).then(renderSettings).catch(fail);
   }
 
   async function refreshStatus() { state.status = await api('/api/admin/status'); renderBanner(); }
@@ -720,6 +720,78 @@
     c.hidden = pending === 0;
   }
 
+  /* ------------------------------------------------------------ mode maintenance */
+  async function loadMaintenance() {
+    state.maintenance = await api('/api/admin/maintenance');
+    renderMaintBanner();
+  }
+
+  function renderMaintBanner() {
+    const m = state.maintenance, b = $('#maint-banner');
+    b.hidden = !m?.enabled;
+    if (!m?.enabled) return;
+    const reopen = h('button', { class: 'act act--key', type: 'button', text: 'Rouvrir le site' });
+    reopen.addEventListener('click', () => setMaintenance(false));
+    b.replaceChildren(h('span', {}, h('strong', { text: 'Ton site est fermé. ' }), 'Tes visiteurs voient la page de maintenance.'), reopen);
+  }
+
+  async function setMaintenance(enabled, texts = {}) {
+    const m = state.maintenance || {};
+    const body = { enabled, title: texts.title ?? m.title ?? '', message: texts.message ?? m.message ?? '', return_date: texts.return_date ?? m.return_date ?? '' };
+    try {
+      state.maintenance = await api('/api/admin/maintenance', { method: 'PUT', body });
+      renderMaintBanner();
+      if (state.tab === 'site') renderSettings();
+      return true;
+    } catch (err) { fail(err); return false; }
+  }
+
+  function maintenanceCard() {
+    const m = state.maintenance || { enabled: false, title: '', message: '', return_date: '' };
+    const fmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    const field = (label, el) => h('label', { class: 'mfield' }, h('span', { text: label }), el);
+    const title = h('input', { class: 'input', maxlength: '120', placeholder: 'Le studio fait peau neuve.' });
+    const message = h('textarea', { class: 'input', rows: '3', maxlength: '600' });
+    const date = h('input', { class: 'input', maxlength: '60', placeholder: 'Ex. : lundi 20 octobre (facultatif)' });
+    title.value = m.title || ''; message.value = m.message || ''; date.value = m.return_date || '';
+    const texts = () => ({ title: title.value.trim(), message: message.value.trim(), return_date: date.value.trim() });
+    const btn = (label, cls, onclick) => h('button', { class: cls, type: 'button', text: label, onclick });
+
+    const preview = btn('Aperçu de la page', 'act', () => window.open('/?apercu-maintenance', '_blank'));
+    const actions = [];
+    if (!m.enabled) {
+      actions.push(btn('Fermer le site', 'btn btn--danger btn--block', async () => {
+        const ok = await confirmBox('Fermer le site ?', 'Tes visiteurs verront la page de maintenance jusqu\'à ce que tu le rouvres. Ton espace admin reste accessible.', 'Fermer le site');
+        if (ok && await setMaintenance(true, texts())) toast('Site fermé : tes visiteurs voient la page de maintenance.');
+      }), preview);
+    } else {
+      actions.push(btn('Rouvrir le site', 'btn btn--key btn--block', async () => {
+        if (await setMaintenance(false, texts())) toast('Site rouvert : tout le monde le voit de nouveau.');
+      }),
+      btn('Enregistrer le texte', 'act', async () => {
+        if (await setMaintenance(true, texts())) toast('Texte de la page de maintenance enregistré.');
+      }),
+      preview,
+      btn('Voir le site (toi seul)', 'act', async () => {
+        const w = window.open('', '_blank'); // ouvert tout de suite, sinon le téléphone bloque la fenêtre
+        try { await api('/api/admin/preview-access', { method: 'POST' }); if (w) w.location = '/'; else location.href = '/'; }
+        catch (err) { w?.close(); fail(err); }
+      }));
+    }
+    const status = m.enabled
+      ? `Site fermé${m.since ? ' depuis le ' + fmt.format(new Date(m.since)) : ''}. Tes visiteurs voient la page de maintenance ; toi, tu gardes l'accès à ton admin.`
+      : 'Ton site est ouvert à tous. Ferme-le le temps d\'une refonte, de tes congés ou d\'une pause : tes visiteurs verront une page d\'attente avec ton WhatsApp, et ton admin reste accessible.';
+    return h('li', { class: 'setting setting--maint' + (m.enabled ? ' is-closed' : '') },
+      h('span', { class: 'setting__dot ' + (m.enabled ? 'is-warn' : 'is-ok'), 'aria-hidden': 'true' }),
+      h('div', {},
+        h('h3', { text: 'Mode maintenance' }),
+        h('p', { text: status }),
+        field('Titre de la page', title),
+        field('Message', message),
+        field('Réouverture prévue', date),
+        h('div', { class: 'maint-actions' }, actions)));
+  }
+
   /* ------------------------------------------------------------ réglages */
   function renderSettings() {
     const s = state.status || {};
@@ -735,6 +807,7 @@
       } catch (err) { fail(err); } finally { testBtn.disabled = false; testBtn.textContent = 'Envoyer un e-mail de test'; }
     });
     $('#settings').replaceChildren(
+      maintenanceCard(),
       row(s.storage_ready, 'Stockage des vidéos et photos',
         s.storage_ready ? `Actif : Cloudinary (${s.cloud_name}). Vidéo 100 Mo max, photo 10 Mo max.`
           : (s.storage_error || 'Pas encore activé : ajoute CLOUDINARY_URL dans Render > Environment.')),
