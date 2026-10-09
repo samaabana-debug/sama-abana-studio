@@ -798,7 +798,7 @@ def has_preview(request: Request) -> bool:
 def maintenance_page(m: dict) -> str:
     e = html.escape
     wa = f"https://wa.me/{settings.whatsapp_number}?text=" + urllib.parse.quote(
-        "Bonjour Sama Abana, j'aimerais parler d'un projet de motion design.")
+        "Bonjour Sama Abana, je vous écris depuis votre site web.")
     mail = f"mailto:{settings.notify_email}?subject=" + urllib.parse.quote("Demande de devis")
     title = e(m.get("title") or MAINTENANCE_DEFAULT["title"])
     words = title.rsplit(" ", 2)
@@ -849,7 +849,7 @@ footer{{color:var(--fog);font-size:13px}}
 <div class="timeline" aria-hidden="true"><span>EN MONTAGE</span><div class="track">
 <span class="key on" style="left:8%"></span><span class="key on" style="left:30%"></span><span class="key" style="left:62%"></span><span class="key" style="left:90%"></span><span class="head"></span></div></div>
 </main>
-<footer>{settings.site_name} · WhatsApp +237 656 29 40 43</footer>
+<footer>{settings.site_name}</footer>
 </body></html>"""
 
 
