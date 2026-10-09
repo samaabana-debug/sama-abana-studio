@@ -166,27 +166,90 @@
         <li class="track__line" aria-hidden="true"><span class="track__fill"></span></li>
         <li class="step">
           <span class="step__key" aria-hidden="true"></span>
-          <span class="step__num">Étape 1</span>
-          <h3 class="step__title">Brief</h3>
-          <p class="step__text">Objectif, public, durée et formats de diffusion : on fixe ce que la vidéo doit accomplir.</p>
+          <article class="step__card">
+            <div class="step__art" aria-hidden="true">
+              <span class="step__plan">Plan 01 / 04</span>
+              <svg viewBox="0 0 300 160" class="art art--brief">
+                <path class="draw" pathLength="1" d="M96 16h108a6 6 0 0 1 6 6v124a6 6 0 0 1-6 6H96a6 6 0 0 1-6-6V22a6 6 0 0 1 6-6Z"/>
+                <path class="draw draw--key" pathLength="1" d="M106 34h44"/>
+                <path class="draw draw--soft" pathLength="1" d="M106 46h82"/>
+                <g class="row" style="--i:0"><rect class="box" x="106" y="62" width="11" height="11" rx="2"/><path class="tick" pathLength="1" d="M108.5 67.5l2.5 2.6 4.3-5.2"/><text x="126" y="71">Objectif</text></g>
+                <g class="row" style="--i:1"><rect class="box" x="106" y="82" width="11" height="11" rx="2"/><path class="tick" pathLength="1" d="M108.5 87.5l2.5 2.6 4.3-5.2"/><text x="126" y="91">Public</text></g>
+                <g class="row" style="--i:2"><rect class="box" x="106" y="102" width="11" height="11" rx="2"/><path class="tick" pathLength="1" d="M108.5 107.5l2.5 2.6 4.3-5.2"/><text x="126" y="111">Durée</text></g>
+                <g class="row" style="--i:3"><rect class="box" x="106" y="122" width="11" height="11" rx="2"/><path class="tick" pathLength="1" d="M108.5 127.5l2.5 2.6 4.3-5.2"/><text x="126" y="131">Formats</text></g>
+              </svg>
+            </div>
+            <div class="step__body">
+              <span class="step__num">Étape 1</span>
+              <h3 class="step__title">Brief</h3>
+              <p class="step__text">Objectif, public, durée et formats de diffusion : on fixe ce que la vidéo doit accomplir.</p>
+              <p class="step__gate"><span>Vous validez</span> la fiche projet</p>
+            </div>
+          </article>
         </li>
         <li class="step">
           <span class="step__key" aria-hidden="true"></span>
-          <span class="step__num">Étape 2</span>
-          <h3 class="step__title">Storyboard et styleframes</h3>
-          <p class="step__text">Vous validez le récit image par image et l'univers visuel avant toute animation.</p>
+          <article class="step__card">
+            <div class="step__art" aria-hidden="true">
+              <span class="step__plan">Plan 02 / 04</span>
+              <svg viewBox="0 0 300 160" class="art art--board">
+                <g class="frame" style="--i:0"><path class="draw" pathLength="1" d="M14 30h80v54H14Z"/><circle class="ball" cx="34" cy="70" r="7"/><path class="draw draw--soft" pathLength="1" d="M14 94h56M14 102h40"/></g>
+                <g class="frame" style="--i:1"><path class="draw" pathLength="1" d="M110 30h80v54h-80Z"/><path class="draw draw--soft" pathLength="1" d="M124 66c8-14 18-20 28-20"/><circle class="ball" cx="160" cy="46" r="7"/><path class="draw draw--soft" pathLength="1" d="M110 94h56M110 102h40"/></g>
+                <g class="frame" style="--i:2"><path class="draw draw--key" pathLength="1" d="M206 30h80v54h-80Z"/><circle class="ball ball--key" cx="246" cy="57" r="13"/><path class="draw draw--soft" pathLength="1" d="M206 94h56M206 102h40"/></g>
+                <g class="swatches"><rect x="14" y="124" width="22" height="16" rx="3" class="sw sw--1"/><rect x="42" y="124" width="22" height="16" rx="3" class="sw sw--2"/><rect x="70" y="124" width="22" height="16" rx="3" class="sw sw--3"/><rect x="98" y="124" width="22" height="16" rx="3" class="sw sw--4"/><text x="132" y="136">Univers visuel</text></g>
+              </svg>
+            </div>
+            <div class="step__body">
+              <span class="step__num">Étape 2</span>
+              <h3 class="step__title">Storyboard et styleframes</h3>
+              <p class="step__text">Vous validez le récit image par image et l'univers visuel avant toute animation.</p>
+              <p class="step__gate"><span>Vous validez</span> le récit et le style</p>
+            </div>
+          </article>
         </li>
         <li class="step">
           <span class="step__key" aria-hidden="true"></span>
-          <span class="step__num">Étape 3</span>
-          <h3 class="step__title">Animation</h3>
-          <p class="step__text">Mouvement, rythme et son. Vous suivez l'avancement et donnez vos retours.</p>
+          <article class="step__card">
+            <div class="step__art" aria-hidden="true">
+              <span class="step__plan">Plan 03 / 04</span>
+              <svg viewBox="0 0 300 160" class="art art--anim">
+                <path class="grid" d="M30 24v88M90 24v88M150 24v88M210 24v88M270 24v88M30 112h240M30 68h240M30 24h240"/>
+                <path class="draw draw--key draw--thick" pathLength="1" d="M30 104C120 104 150 32 270 32"/>
+                <path class="draw draw--soft" pathLength="1" d="M30 104l70-24M270 32l-70 2"/>
+                <rect class="kf" x="24" y="98" width="12" height="12" transform="rotate(45 30 104)"/>
+                <rect class="kf" x="264" y="26" width="12" height="12" transform="rotate(45 270 32)"/>
+                <g class="head"><path d="M30 18v100"/><path class="head__cap" d="M24 14h12l-6 7Z"/></g>
+                <g class="wave"><rect x="30" y="134" width="6" height="12" rx="1.5" style="--i:0"/><rect x="42" y="130" width="6" height="20" rx="1.5" style="--i:1"/><rect x="54" y="136" width="6" height="8" rx="1.5" style="--i:2"/><rect x="66" y="128" width="6" height="24" rx="1.5" style="--i:3"/><rect x="78" y="133" width="6" height="14" rx="1.5" style="--i:4"/><rect x="90" y="131" width="6" height="18" rx="1.5" style="--i:5"/><rect x="102" y="135" width="6" height="10" rx="1.5" style="--i:6"/><rect x="114" y="129" width="6" height="22" rx="1.5" style="--i:7"/><rect x="126" y="134" width="6" height="12" rx="1.5" style="--i:8"/><text x="146" y="144">Mouvement · rythme · son</text></g>
+              </svg>
+            </div>
+            <div class="step__body">
+              <span class="step__num">Étape 3</span>
+              <h3 class="step__title">Animation</h3>
+              <p class="step__text">Mouvement, rythme et son. Vous suivez l'avancement et donnez vos retours.</p>
+              <p class="step__gate"><span>Vous validez</span> chaque version de travail</p>
+            </div>
+          </article>
         </li>
         <li class="step">
           <span class="step__key" aria-hidden="true"></span>
-          <span class="step__num">Étape 4</span>
-          <h3 class="step__title">Livraison</h3>
-          <p class="step__text">Fichiers prêts pour chaque écran : 9:16, 4:5, 1:1 et 16:9, en haute résolution.</p>
+          <article class="step__card">
+            <div class="step__art" aria-hidden="true">
+              <span class="step__plan">Plan 04 / 04</span>
+              <svg viewBox="0 0 300 160" class="art art--formats">
+                <g class="fmt" style="--i:0"><path class="draw" pathLength="1" d="M18 30h44v78H18Z"/><text x="40" y="128">9:16</text></g>
+                <g class="fmt" style="--i:1"><path class="draw" pathLength="1" d="M78 46h50v62H78Z"/><text x="103" y="128">4:5</text></g>
+                <g class="fmt" style="--i:2"><path class="draw" pathLength="1" d="M144 58h50v50h-50Z"/><text x="169" y="128">1:1</text></g>
+                <g class="fmt" style="--i:3"><path class="draw draw--key" pathLength="1" d="M210 66h76v42h-76Z"/><text x="248" y="128">16:9</text></g>
+                <path class="draw draw--soft" pathLength="1" d="M18 108h268"/>
+              </svg>
+            </div>
+            <div class="step__body">
+              <span class="step__num">Étape 4</span>
+              <h3 class="step__title">Livraison</h3>
+              <p class="step__text">Fichiers prêts pour chaque écran : 9:16, 4:5, 1:1 et 16:9, en haute résolution.</p>
+              <p class="step__gate step__gate--end"><span>Vous recevez</span> vos fichiers, prêts à publier</p>
+            </div>
+          </article>
         </li>
       </ol>
     </section>
